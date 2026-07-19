@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block extra_style %}
+.results-header {
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.results-header h2 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+.results-header p { color: var(--text-muted); font-size: .9rem; margin-top: .25rem; }
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.summary-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  text-align: center;
+}
+.summary-box .big-num {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1;
+}
+.summary-box .big-lbl {
+  font-size: .78rem;
+  color: var(--text-muted);
+  margin-top: .4rem;
+}
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+
+.table-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.table-card table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .85rem;
+}
+.table-card thead {
+  background: var(--bg);
+  font-size: .75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-muted);
+}
+.table-card th, .table-card td {
+  padding: .75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.table-card tbody tr:last-child td { border-bottom: none; }
+.table-card tbody tr:hover { background: var(--bg); }
+
+.graph-section { margin-bottom: 2rem; }
+.graph-section h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+.graph-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  padding: 1rem;
+}
+.graph-card img { width: 100%; border-radius: 8px; display: block; }
+
+.no-data {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-muted);
+}
+.no-data .icon { font-size: 3rem; margin-bottom: 1rem; }
+{% endblock %}
+
+{% block content %}
+
+<div class="results-header">
+  <div>
+    <h2>Traffic Analysis Report</h2>
+    <p>Processed by Nigerian Traffic Detection System · Custom YOLO Model</p>
+  </div>
+  <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
+    <a href="/download_csv" class="btn btn-primary">⬇ Download CSV</a>
+    <a href="/"             class="btn btn-outline">← New Detection</a>
+  </div>
+</div>
+
+{% if grand_total == 0 %}
+<div class="no-data card">
+  <div class="icon">📭</div>
+  <p>No detection data yet. Run a detection first.</p>
+  <br>
+  <a href="/" class="btn btn-primary">Start Detection</a>
+</div>
+
+{% else %}
+
+<!-- Summary stats -->
+<div class="summary-grid">
+  <div class="summary-box">
+    <div class="big-num">{{ grand_total }}</div>
+    <div class="big-lbl">Total Vehicles</div>
+  </div>
+  <div class="summary-box">
+    <div class="big-num">{{ avg_speed }}</div>
+    <div class="big-lbl">Avg Speed (km/h)</div>
+  </div>
+  <div class="summary-box">
+    <div class="big-num">{{ counts.values()|sum(attribute='IN') }}</div>
+    <div class="big-lbl">Total IN</div>
+  </div>
+  <div class="summary-box">
+    <div class="big-num">{{ counts.values()|sum(attribute='OUT') }}</div>
+    <div class="big-lbl">Total OUT</div>
+  </div>
+  <div class="summary-box">
+    <div class="big-num" style="font-size:1.1rem;">{{ peak_minute }}</div>
+    <div class="big-lbl">Peak Traffic Minute</div>
+  </div>
+</div>
+
+<!-- Per vehicle type table + recent events -->
+<div class="two-col">
+
+  <div class="table-card">
+    <table>
+      <thead>
+        <tr>
+          <th>Vehicle</th>
+          <th>IN</th>
+          <th>OUT</th>
+          <th>Total</th>
+          <th>Share</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for vehicle, c in counts.items() %}
+        {% set total = c.IN + c.OUT %}
+        {% set pct = ((total / grand_total) * 100)|round(1) if grand_total > 0 else 0 %}
+        <tr>
+          <td><strong>{{ vehicle }}</strong></td>
+          <td style="color:var(--success);font-weight:600;">{{ c.IN }}</td>
+          <td style="color:var(--danger);font-weight:600;">{{ c.OUT }}</td>
+          <td style="font-weight:700;color:var(--primary);">{{ total }}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+                <div style="width:{{ pct }}%;height:100%;background:var(--primary-light);"></div>
+              </div>
+              <span style="font-size:.75rem;color:var(--text-muted);width:36px;">{{ pct }}%</span>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-card">
+    <table>
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Vehicle</th>
+          <th>Direction</th>
+          <th>Speed</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if logs %}
+          {% for log in logs[-15:]|reverse %}
+          <tr>
+            <td style="color:var(--text-muted);font-size:.78rem;">{{ log.time }}</td>
+            <td><strong>{{ log.vehicle }}</strong></td>
+            <td>
+              {% if log.direction == "IN" %}
+                <span style="color:var(--success);font-weight:600;">↓ IN</span>
+              {% else %}
+                <span style="color:var(--danger);font-weight:600;">↑ OUT</span>
+              {% endif %}
+            </td>
+            <td>{{ log.speed }} km/h</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="4" style="text-align:center;color:var(--text-muted);">No events recorded</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- Graphs -->
+<div class="graph-section">
+  <h3>Traffic Analysis Dashboard</h3>
+  <div class="graph-card">
+    <img src="/static/graphs/traffic_analysis_dashboard.png?v={{ cache_bust }}"
+         alt="Traffic Analysis Dashboard"
+         onerror="this.parentElement.innerHTML='<p style=\'text-align:center;padding:2rem;color:var(--text-muted)\'>Graph not yet generated. Complete a detection first.</p>'">
+  </div>
+</div>
+
+<div class="graph-section">
+  <h3>Accuracy Report</h3>
+  <div class="graph-card">
+    <img src="/static/graphs/accuracy_report.png?v={{ cache_bust }}"
+         alt="Accuracy Report"
+         onerror="this.parentElement.innerHTML='<p style=\'text-align:center;padding:2rem;color:var(--text-muted)\'>Graph not yet generated.</p>'">
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}
