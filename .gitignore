@@ -1,8 +1,0 @@
-uploads/
-graphs/
-static/graphs/
-output.csv
-*.pt
-__pycache__/
-*.pyc
-.env
