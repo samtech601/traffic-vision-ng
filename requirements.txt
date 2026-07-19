@@ -1,7 +1,0 @@
-flask
-ultralytics
-opencv-python-headless
-pandas
-matplotlib
-numpy
-gunicorn
